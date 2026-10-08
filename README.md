@@ -33,7 +33,7 @@
 
 1. Клонувати репозиторій:
    ```bash
-   git clone <посилання-на-репозиторій>
+   git clone https://github.com/zhurykmaks11/Toorism_App.git
    ```
 2. Відкрити папку проєкту в IntelliJ IDEA (*File → Open*, вибрати папку з `pom.xml`).
 3. Дочекатися завантаження залежностей Maven.
@@ -114,21 +114,3 @@ Turism_APP/
             └── index.html                    # головна сторінка (frontend)
 ```
 
----
-
-## Як це працює
-
-1. `TurismAppApplication` запускає вбудований сервер **Tomcat** на порту 8080.
-2. `TripController` (`@RestController`) обробляє HTTP-запити й повертає дані у форматі JSON.
-3. Дані поки зберігаються в пам'яті застосунку (список у контролері). Базу даних буде підключено в наступних лабораторних.
-4. Сторінка `index.html` з папки `static` віддається автоматично. Через `fetch()` вона звертається до `/api/health` і `/api/trips` та відображає подорожі у вигляді карток.
-
----
-
-## Можливі проблеми
-
-| Проблема | Рішення |
-|---|---|
-| `Port 8080 was already in use` | Закрити програму, яка займає порт, або додати `server.port=8081` в `application.properties` |
-| `invalid target release: 25` | Встановити JDK 25 і вибрати його в *File → Project Structure → SDK* |
-| Помилки біля `@Data` / не знаходить гетери | Увімкнути *Settings → Build → Compiler → Annotation Processors → Enable annotation processing* |
