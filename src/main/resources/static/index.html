@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Planner</title>
+    <style>
+        :root {
+            --bg: #f4f1ea;
+            --card: #ffffff;
+            --text: #1f2a2e;
+            --muted: #6b7478;
+            --accent: #1f6f5c;
+            --accent-soft: #e3f0ec;
+            --border: #e2ddd2;
+            --error: #b3412f;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            font-family: "Segoe UI", system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+        }
+        header {
+            background: var(--accent);
+            color: #fff;
+            padding: 32px 16px;
+        }
+        .container { max-width: 960px; margin: 0 auto; padding: 0 16px; }
+        header h1 { margin: 0 0 6px; font-size: 32px; }
+        header p { margin: 0; opacity: .85; }
+        .status {
+            display: inline-flex; align-items: center; gap: 8px;
+            margin-top: 16px; padding: 6px 12px;
+            background: rgba(255,255,255,.15); border-radius: 999px; font-size: 14px;
+        }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #ccc; }
+        .dot.ok { background: #7ee2b8; }
+        .dot.fail { background: #ff8a75; }
+        main { padding: 32px 0 48px; }
+        h2 { margin: 0 0 16px; font-size: 22px; }
+        .grid {
+            display: grid; gap: 16px;
+            grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+        }
+        .card {
+            background: var(--card); border: 1px solid var(--border);
+            border-radius: 12px; padding: 20px;
+        }
+        .card h3 { margin: 0 0 6px; font-size: 20px; }
+        .card .desc { color: var(--muted); margin: 0 0 14px; }
+        .row { display: flex; justify-content: space-between; font-size: 14px; padding: 4px 0; }
+        .row span:first-child { color: var(--muted); }
+        .badge {
+            display: inline-block; margin-top: 12px; padding: 4px 10px;
+            background: var(--accent-soft); color: var(--accent);
+            border-radius: 999px; font-size: 13px; font-weight: 600;
+        }
+        .message { color: var(--muted); }
+        .message.error { color: var(--error); }
+        footer { text-align: center; color: var(--muted); font-size: 13px; padding-bottom: 24px; }
+        footer a { color: var(--accent); }
+    </style>
+</head>
+<body>
+<header>
+    <div class="container">
+        <h1>Travel Planner</h1>
+        <p>Плануй подорожі: міста, місця та бюджет в одному місці</p>
+        <div class="status"><span class="dot" id="statusDot"></span><span id="statusText">Перевірка сервера...</span></div>
+    </div>
+</header>
+
+<main>
+    <div class="container">
+        <h2>Мої подорожі</h2>
+        <div id="trips" class="grid"></div>
+        <p id="message" class="message">Завантаження...</p>
+    </div>
+</main>
+
+<footer>
+    API: <a href="/api/health">/api/health</a> · <a href="/api/trips">/api/trips</a>
+</footer>
+
+<script>
+    function formatDate(value) {
+        return new Date(value).toLocaleDateString("uk-UA");
+    }
+
+    function daysBetween(start, end) {
+        const ms = new Date(end) - new Date(start);
+        return Math.round(ms / (1000 * 60 * 60 * 24)) + 1;
+    }
+
+    async function checkHealth() {
+        const dot = document.getElementById("statusDot");
+        const text = document.getElementById("statusText");
+        try {
+            const response = await fetch("/api/health");
+            if (!response.ok) throw new Error();
+            dot.classList.add("ok");
+            text.textContent = await response.text();
+        } catch (e) {
+            dot.classList.add("fail");
+            text.textContent = "Сервер недоступний";
+        }
+    }
+
+    async function loadTrips() {
+        const container = document.getElementById("trips");
+        const message = document.getElementById("message");
+        try {
+            const response = await fetch("/api/trips");
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            const trips = await response.json();
+
+            if (trips.length === 0) {
+                message.textContent = "Подорожей поки немає.";
+                return;
+            }
+            message.textContent = "";
+
+            trips.forEach(trip => {
+                const card = document.createElement("div");
+                card.className = "card";
+
+                const title = document.createElement("h3");
+                title.textContent = trip.title;
+
+                const desc = document.createElement("p");
+                desc.className = "desc";
+                desc.textContent = trip.description;
+
+                card.append(title, desc);
+                card.insertAdjacentHTML("beforeend", `
+                    <div class="row"><span>Початок</span><span>${formatDate(trip.startDate)}</span></div>
+                    <div class="row"><span>Кінець</span><span>${formatDate(trip.endDate)}</span></div>
+                    <div class="row"><span>Бюджет</span><span>${trip.budget.toLocaleString("uk-UA")} грн</span></div>
+                    <span class="badge">${daysBetween(trip.startDate, trip.endDate)} дн.</span>
+                `);
+                container.appendChild(card);
+            });
+        } catch (e) {
+            message.textContent = "Не вдалося завантажити подорожі: " + e.message;
+            message.classList.add("error");
+        }
+    }
+
+    checkHealth();
+    loadTrips();
+</script>
+</body>
+</html>
