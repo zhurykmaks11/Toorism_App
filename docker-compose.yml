@@ -1,4 +1,3 @@
-# Швидкий запуск PostgreSQL через Docker:  docker compose up -d
 services:
   postgres:
     image: postgres:17
