@@ -86,20 +86,6 @@ Tomcat started on port 8080
 ---
 
 ## HTTP-запити для перевірки CRUD
-
-Усі запити вже готові, вручну нічого писати не потрібно.
-
-| Інструмент | Файли |
-|---|---|
-| **Postman** | `postman/Travel-Planner-CRUD.postman_collection.json` |
-| **IntelliJ IDEA HTTP Client** | `http-requests/trips.http`, `destinations.http`, `places.http`, `delete.http` |
-
-**Postman:** *Import* → вибрати файл колекції → *Run collection* (або запускати запити по черзі). Кожен запит має тест, який перевіряє статус відповіді. Id створених записів автоматично зберігаються у змінних `tripId`, `destinationId`, `placeId`, тому наступні запити працюють саме з ними.
-
-**IntelliJ IDEA:** відкрити файл `.http`, вибрати оточення `dev` і натискати ▶ біля запитів зверху вниз, у порядку `trips` → `destinations` → `places` → `delete`.
-
----
-
 ## REST API
 
 ### Trips: подорожі
