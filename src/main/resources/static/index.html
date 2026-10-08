@@ -57,6 +57,7 @@
             background: var(--accent-soft); color: var(--accent);
             border-radius: 999px; font-size: 13px; font-weight: 600;
         }
+        .badge + .badge { margin-left: 6px; }
         .message { color: var(--muted); }
         .message.error { color: var(--error); }
         footer { text-align: center; color: var(--muted); font-size: 13px; padding-bottom: 24px; }
@@ -85,6 +86,8 @@
 </footer>
 
 <script>
+    const STATUS_LABELS = { PLANNED: "Запланована", ONGOING: "Триває", COMPLETED: "Завершена" };
+
     function formatDate(value) {
         return new Date(value).toLocaleDateString("uk-UA");
     }
@@ -131,14 +134,15 @@
 
                 const desc = document.createElement("p");
                 desc.className = "desc";
-                desc.textContent = trip.description;
+                desc.textContent = trip.description || "";
 
                 card.append(title, desc);
                 card.insertAdjacentHTML("beforeend", `
                     <div class="row"><span>Початок</span><span>${formatDate(trip.startDate)}</span></div>
                     <div class="row"><span>Кінець</span><span>${formatDate(trip.endDate)}</span></div>
-                    <div class="row"><span>Бюджет</span><span>${trip.budget.toLocaleString("uk-UA")} грн</span></div>
+                    <div class="row"><span>Бюджет</span><span>${trip.budget != null ? Number(trip.budget).toLocaleString("uk-UA") + " грн" : "—"}</span></div>
                     <span class="badge">${daysBetween(trip.startDate, trip.endDate)} дн.</span>
+                    <span class="badge">${STATUS_LABELS[trip.status] || trip.status}</span>
                 `);
                 container.appendChild(card);
             });

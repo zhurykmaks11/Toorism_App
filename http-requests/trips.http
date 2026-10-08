@@ -1,0 +1,63 @@
+### 1. Trips (подорожі)
+# Запускати по черзі зверху вниз. id нових записів зберігаються у змінних tripId / destinationId / placeId.
+
+### Отримати всі подорожі  →  очікується 200
+GET {{baseUrl}}/api/trips
+
+### Фільтр за статусом (PLANNED)  →  очікується 200
+GET {{baseUrl}}/api/trips?status=PLANNED
+
+### Отримати подорож за id  →  очікується 200
+GET {{baseUrl}}/api/trips/1
+
+### Створити подорож  →  очікується 201
+POST {{baseUrl}}/api/trips
+Content-Type: application/json
+
+{
+  "title": "Київ — вихідні",
+  "description": "Музеї, лавра і Поділ",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-21",
+  "budget": 6000,
+  "status": "PLANNED"
+}
+
+> {% client.global.set("tripId", response.body.id); %}
+
+### Оновити подорож  →  очікується 200
+PUT {{baseUrl}}/api/trips/{{tripId}}
+Content-Type: application/json
+
+{
+  "title": "Київ — довгі вихідні",
+  "description": "Музеї, лавра, Поділ і Андріївський узвіз",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-22",
+  "budget": 7500,
+  "status": "ONGOING"
+}
+
+### Помилка: порожня назва і від'ємний бюджет (400)  →  очікується 400
+POST {{baseUrl}}/api/trips
+Content-Type: application/json
+
+{
+  "title": "",
+  "startDate": "2026-12-01",
+  "endDate": "2026-12-05",
+  "budget": -100
+}
+
+### Помилка: кінець раніше початку (400)  →  очікується 400
+POST {{baseUrl}}/api/trips
+Content-Type: application/json
+
+{
+  "title": "Тест",
+  "startDate": "2026-12-10",
+  "endDate": "2026-12-01"
+}
+
+### Помилка: подорож не існує (404)  →  очікується 404
+GET {{baseUrl}}/api/trips/9999

@@ -1,36 +1,48 @@
 package org.example.turism_app.controller;
 
-import org.example.turism_app.model.Trip;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.example.turism_app.dto.TripRequest;
+import org.example.turism_app.dto.TripResponse;
+import org.example.turism_app.model.TripStatus;
+import org.example.turism_app.service.TripService;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
+import java.net.URI;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/trips")
+@RequiredArgsConstructor
 public class TripController {
 
-    private final List<Trip> trips = List.of(
-            new Trip(1L, "Карпати", "Похід на Говерлу", LocalDate.of(2026, 7, 10), LocalDate.of(2026, 7, 15), 8000.0),
-            new Trip(2L, "Львів", "Кава і старе місто", LocalDate.of(2026, 9, 1), LocalDate.of(2026, 9, 3), 5000.0),
-            new Trip(3L, "Одеса", "Море і Привоз", LocalDate.of(2026, 8, 5), LocalDate.of(2026, 8, 12), 12000.0)
-    );
+    private final TripService tripService;
 
     @GetMapping
-    public List<Trip> getAll() {
-        return trips;
+    public List<TripResponse> getAll(@RequestParam(required = false) TripStatus status) {
+        return tripService.getAll(status);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Trip> getById(@PathVariable Long id) {
-        return trips.stream()
-                .filter(t -> t.getId().equals(id))
-                .findFirst()
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public TripResponse getById(@PathVariable Long id) {
+        return tripService.getById(id);
+    }
+
+    @PostMapping
+    public ResponseEntity<TripResponse> create(@Valid @RequestBody TripRequest request) {
+        TripResponse created = tripService.create(request);
+        return ResponseEntity.created(URI.create("/api/trips/" + created.id())).body(created);
+    }
+
+    @PutMapping("/{id}")
+    public TripResponse update(@PathVariable Long id, @Valid @RequestBody TripRequest request) {
+        return tripService.update(id, request);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> delete(@PathVariable Long id) {
+        tripService.delete(id);
+        return ResponseEntity.noContent().build();
     }
 }

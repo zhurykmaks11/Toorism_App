@@ -1,0 +1,14 @@
+### 4. Delete (видалення)
+# Запускати по черзі зверху вниз. id нових записів зберігаються у змінних tripId / destinationId / placeId.
+
+### Видалити місце  →  очікується 204
+DELETE {{baseUrl}}/api/places/{{placeId}}
+
+### Видалити місто  →  очікується 204
+DELETE {{baseUrl}}/api/destinations/{{destinationId}}
+
+### Видалити подорож  →  очікується 204
+DELETE {{baseUrl}}/api/trips/{{tripId}}
+
+### Перевірка: подорож видалена (404)  →  очікується 404
+GET {{baseUrl}}/api/trips/{{tripId}}
