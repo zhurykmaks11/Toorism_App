@@ -5,7 +5,63 @@
 | Лабораторна | Тема | Гілка |
 |---|---|---|
 | №1 | Simple web-application | `Lab1-web-security` |
-| **№2** | **Create CRUD http-requests for the project** | **`Lab2-crud`** |
+| №2 | Create CRUD http-requests for the project | `lab2-web-security` |
+| **№3** | **Protect by basic authorization all the requests from task № 2** | **`lab3-web-security`** |
+
+---
+
+## Що зроблено в лабораторній №3
+
+- Підключено **Spring Security** і **HTTP Basic Authorization**.
+- Усі CRUD-запити з лаби №2 (`/api/trips/**`, `/api/destinations/**`, `/api/places/**`) працюють **лише з логіном і паролем**.
+- Два користувачі з різними ролями:
+
+| Логін | Пароль | Роль | Що дозволено |
+|---|---|---|---|
+| `admin` | `admin123` | ADMIN | усі операції: GET, POST, PUT, PATCH, DELETE |
+| `user` | `user123` | USER | лише читання: GET |
+
+- Паролі зберігаються як **BCrypt-хеш**; логіни й паролі можна змінити змінними середовища `ADMIN_USERNAME`, `ADMIN_PASSWORD`, `USER_USERNAME`, `USER_PASSWORD`.
+- Відповіді при відмові у доступі повертаються у JSON:
+
+| Ситуація | Код |
+|---|---|
+| Немає заголовка `Authorization` | **401 Unauthorized** |
+| Неправильний логін або пароль | **401 Unauthorized** |
+| `user` намагається створити, змінити або видалити дані | **403 Forbidden** |
+
+```json
+{
+  "timestamp": "2026-10-13T22:10:05",
+  "status": 401,
+  "error": "Unauthorized",
+  "message": "Потрібна авторизація: вкажіть правильний логін і пароль (Basic Auth)",
+  "path": "/api/trips"
+}
+```
+
+Без авторизації залишились лише `GET /api/health` і головна сторінка (браузер сам попросить логін і пароль, коли сторінка звернеться до API).
+
+### 10 HTTP-запитів (лаба №3)
+
+Файли: `postman/Travel-Planner-Basic-Auth.postman_collection.json` (Postman) і `http-requests/basic-auth.http` (IntelliJ IDEA).
+
+| № | Авторизація | Запит | Очікується |
+|---|---|---|---|
+| 1 | немає | `GET /api/trips` | 401 |
+| 2 | admin / неправильний пароль | `GET /api/trips` | 401 |
+| 3 | user | `GET /api/trips` | 200 |
+| 4 | user | `GET /api/trips/1/destinations` | 200 |
+| 5 | user | `POST /api/trips` | 403 |
+| 6 | admin | `POST /api/trips` | 201 |
+| 7 | admin | `PUT /api/trips/{tripId}` | 200 |
+| 8 | admin | `POST /api/trips/{tripId}/destinations` | 201 |
+| 9 | user | `DELETE /api/trips/{tripId}` | 403 |
+| 10 | admin | `DELETE /api/trips/{tripId}` | 204 |
+
+**Як запустити в Postman:** *Import* → файл колекції → **Run collection** → **Run**. Логіни й паролі вже налаштовані у змінних колекції, id створеної подорожі підставляється автоматично. Кожен запит перевіряє очікуваний код відповіді.
+
+**Як додати Basic Auth вручну:** вкладка **Authorization** → Type **Basic Auth** → Username / Password. Postman сам додасть заголовок `Authorization: Basic <base64(логін:пароль)>`.
 
 ---
 
@@ -80,13 +136,15 @@ Tomcat started on port 8080
 
 ### Крок 4. Перевірити
 
+- http://localhost:8080/api/health: працює без авторизації
+- http://localhost:8080/api/trips: браузер попросить логін і пароль (`user` / `user123` або `admin` / `admin123`)
 - http://localhost:8080: головна сторінка зі списком подорожей
-- http://localhost:8080/api/trips: подорожі у форматі JSON
 
 ---
 
-## HTTP-запити для перевірки CRUD
 ## REST API
+
+> Починаючи з лаби №3, усі запити нижче потребують Basic Authorization (див. вище).
 
 ### Trips: подорожі
 
@@ -211,10 +269,11 @@ trips (подорожі)
 ```
 Turism_APP/
 ├── docker-compose.yml                    # PostgreSQL у Docker
-├── http-requests/                        # HTTP-запити для IntelliJ IDEA
-├── postman/                              # колекція Postman
+├── http-requests/basic-auth.http         # 10 HTTP-запитів для IntelliJ IDEA (лаба №3)
+├── postman/                              # колекція Postman (лаба №3)
 └── src/main/
     ├── java/org/example/turism_app/
+    │   ├── config/                       # Spring Security: Basic Auth, користувачі, 401/403
     │   ├── controller/                   # REST-контролери (HTTP → сервіс)
     │   │   ├── TripController.java
     │   │   ├── DestinationController.java
@@ -233,7 +292,7 @@ Turism_APP/
         └── static/index.html             # головна сторінка
 ```
 
-**Як проходить запит:** `Controller` приймає HTTP-запит і перевіряє DTO (`@Valid`) → `Service` перевіряє бізнес-правила → `Repository` звертається до PostgreSQL → у відповідь повертається DTO у форматі JSON.
+**Як проходить запит:** Spring Security перевіряє логін, пароль і роль → `Controller` приймає HTTP-запит і перевіряє DTO (`@Valid`) → `Service` перевіряє бізнес-правила → `Repository` звертається до PostgreSQL → у відповідь повертається DTO у форматі JSON.
 
 ---
 
@@ -245,4 +304,6 @@ Turism_APP/
 | `password authentication failed for user "postgres"` | Неправильний пароль, задайте `DB_PASSWORD` (крок 2) |
 | `database "travel_planner" does not exist` | Створіть базу (крок 1) |
 | `Port 8080 was already in use` | Додайте `server.port=8081` в `application.properties` |
+| `401 Unauthorized` у Postman | Перевірте вкладку *Authorization*: Type = Basic Auth, правильні логін і пароль |
+| `403 Forbidden` на POST / PUT / DELETE | Ці дії дозволені лише `admin` |
 | `invalid target release: 25` | Встановіть JDK 25 і виберіть його в *File → Project Structure → SDK* |
