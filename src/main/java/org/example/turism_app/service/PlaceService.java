@@ -47,7 +47,7 @@ public class PlaceService {
         Place place = findPlace(id);
         validate(request, place.getDestination());
         apply(place, request);
-        return PlaceResponse.from(place);
+        return PlaceResponse.from(placeRepository.saveAndFlush(place));
     }
 
     @Transactional
@@ -57,7 +57,7 @@ public class PlaceService {
         if (rating != null) {
             place.setRating(rating);
         }
-        return PlaceResponse.from(place);
+        return PlaceResponse.from(placeRepository.saveAndFlush(place));
     }
 
     @Transactional

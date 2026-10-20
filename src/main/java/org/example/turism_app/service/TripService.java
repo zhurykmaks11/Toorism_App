@@ -57,7 +57,7 @@ public class TripService {
         }
 
         apply(trip, request);
-        return TripResponse.from(trip);
+        return TripResponse.from(tripRepository.saveAndFlush(trip)); // flush → оновлюються поля аудиту
     }
 
     @Transactional

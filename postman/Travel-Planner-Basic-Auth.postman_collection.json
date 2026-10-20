@@ -1,0 +1,523 @@
+{
+  "info": {
+    "name": "Travel Planner — Basic Auth (Лаба 3)",
+    "description": "10 HTTP-запитів до CRUD API, захищеного Basic Authorization.\n\nКористувачі:\n- admin / admin123 — роль ADMIN (усі операції)\n- user / user123 — роль USER (лише читання)\n\nЗапускати по черзі або через Run collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "01. Без авторизації → 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 401\", function () { pm.response.to.have.status(401); });",
+              "pm.test(\"Є заголовок WWW-Authenticate: Basic\", function () { pm.expect(pm.response.headers.get(\"WWW-Authenticate\")).to.include(\"Basic\"); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "noauth"
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/trips",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "trips"
+          ]
+        }
+      }
+    },
+    {
+      "name": "02. Неправильний пароль → 401",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 401\", function () { pm.response.to.have.status(401); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{adminUsername}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "wrong-password",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/trips",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "trips"
+          ]
+        }
+      }
+    },
+    {
+      "name": "03. USER: отримати всі подорожі → 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Повернувся масив подорожей\", function () { pm.expect(pm.response.json()).to.be.an(\"array\").that.is.not.empty; });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{userUsername}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{userPassword}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/trips",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "trips"
+          ]
+        }
+      }
+    },
+    {
+      "name": "04. USER: отримати міста подорожі → 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Повернувся масив міст\", function () { pm.expect(pm.response.json()).to.be.an(\"array\"); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{userUsername}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{userPassword}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/trips/1/destinations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "trips",
+            "1",
+            "destinations"
+          ]
+        }
+      }
+    },
+    {
+      "name": "05. USER: створити подорож → 403",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 403\", function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{userUsername}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{userPassword}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/trips",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "trips"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Київ — вихідні\",\n  \"description\": \"Музеї, лавра і Поділ\",\n  \"startDate\": \"2026-12-18\",\n  \"endDate\": \"2026-12-21\",\n  \"budget\": 6000,\n  \"status\": \"PLANNED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "06. ADMIN: створити подорож → 201",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 201\", function () { pm.response.to.have.status(201); });",
+              "pm.test(\"Подорож має id\", function () { pm.expect(pm.response.json().id).to.be.a(\"number\"); });",
+              "pm.collectionVariables.set(\"tripId\", pm.response.json().id);"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{adminUsername}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{adminPassword}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/trips",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "trips"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Київ — вихідні\",\n  \"description\": \"Музеї, лавра і Поділ\",\n  \"startDate\": \"2026-12-18\",\n  \"endDate\": \"2026-12-21\",\n  \"budget\": 6000,\n  \"status\": \"PLANNED\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "07. ADMIN: оновити подорож → 200",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 200\", function () { pm.response.to.have.status(200); });",
+              "pm.test(\"Статус змінився на ONGOING\", function () { pm.expect(pm.response.json().status).to.eql(\"ONGOING\"); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{adminUsername}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{adminPassword}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/trips/{{tripId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "trips",
+            "{{tripId}}"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Київ — довгі вихідні\",\n  \"description\": \"Музеї, лавра, Поділ і Андріївський узвіз\",\n  \"startDate\": \"2026-12-18\",\n  \"endDate\": \"2026-12-22\",\n  \"budget\": 7500,\n  \"status\": \"ONGOING\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "08. ADMIN: додати місто до подорожі → 201",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 201\", function () { pm.response.to.have.status(201); });",
+              "pm.test(\"Місто належить новій подорожі\", function () { pm.expect(pm.response.json().tripId).to.eql(Number(pm.collectionVariables.get(\"tripId\"))); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{adminUsername}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{adminPassword}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "url": {
+          "raw": "{{baseUrl}}/api/trips/{{tripId}}/destinations",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "trips",
+            "{{tripId}}",
+            "destinations"
+          ]
+        },
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"city\": \"Київ\",\n  \"country\": \"Україна\",\n  \"arrivalDate\": \"2026-12-18\",\n  \"departureDate\": \"2026-12-21\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "09. USER: видалити подорож → 403",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 403\", function () { pm.response.to.have.status(403); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{userUsername}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{userPassword}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/trips/{{tripId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "trips",
+            "{{tripId}}"
+          ]
+        }
+      }
+    },
+    {
+      "name": "10. ADMIN: видалити подорож → 204",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test(\"Статус 204\", function () { pm.response.to.have.status(204); });"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "auth": {
+          "type": "basic",
+          "basic": [
+            {
+              "key": "username",
+              "value": "{{adminUsername}}",
+              "type": "string"
+            },
+            {
+              "key": "password",
+              "value": "{{adminPassword}}",
+              "type": "string"
+            }
+          ]
+        },
+        "method": "DELETE",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/api/trips/{{tripId}}",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "trips",
+            "{{tripId}}"
+          ]
+        }
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "adminUsername",
+      "value": "admin"
+    },
+    {
+      "key": "adminPassword",
+      "value": "admin123"
+    },
+    {
+      "key": "userUsername",
+      "value": "user"
+    },
+    {
+      "key": "userPassword",
+      "value": "user123"
+    },
+    {
+      "key": "tripId",
+      "value": "1"
+    }
+  ]
+}

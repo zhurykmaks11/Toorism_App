@@ -1,0 +1,82 @@
+###1. GET All trips
+GET http://localhost:8080/api/trips
+Authorization: Basic admin admin123
+Accept: application/json
+
+> {%
+    client.test("GET all → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+        client.assert(response.headers.valueOf("X-XSRF-TOKEN"), "Сервер не повернув CSRF-токен");
+    });
+    // Сервер повертає CSRF-токен у cookie XSRF-TOKEN і дублює його в заголовку X-XSRF-TOKEN
+    client.global.set("xsrfToken", response.headers.valueOf("X-XSRF-TOKEN"));
+%}
+
+###2. GET one trip
+GET http://localhost:8080/api/trips/1
+Authorization: Basic admin admin123
+Accept: application/json
+
+> {%
+    client.test("GET one → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+    });
+%}
+
+###3. CREATE trip
+POST http://localhost:8080/api/trips
+Authorization: Basic admin admin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Київ — вихідні",
+  "description": "Музеї, лавра і Поділ",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-21",
+  "budget": 6000,
+  "status": "PLANNED"
+}
+
+> {%
+    client.test("CREATE → 201", function () {
+        client.assert(response.status === 201, "Очікувався 201, отримано " + response.status);
+        client.assert(response.body.createdBy === "admin", "createdBy має бути admin");
+    });
+    client.global.set("tripId", response.body.id);
+%}
+
+###4. UPDATE trip
+PUT http://localhost:8080/api/trips/{{tripId}}
+Authorization: Basic admin admin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Київ — довгі вихідні",
+  "description": "Музеї, лавра, Поділ і Андріївський узвіз",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-22",
+  "budget": 7500,
+  "status": "ONGOING"
+}
+
+> {%
+    client.test("UPDATE → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+        client.assert(response.body.updatedBy === "admin", "updatedBy має бути admin");
+    });
+%}
+
+###5. DELETE trip
+DELETE http://localhost:8080/api/trips/{{tripId}}
+Authorization: Basic admin admin123
+X-XSRF-TOKEN: {{xsrfToken}}
+
+> {%
+    client.test("DELETE → 204", function () {
+        client.assert(response.status === 204, "Очікувався 204, отримано " + response.status);
+    });
+%}

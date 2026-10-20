@@ -57,7 +57,7 @@ public class DestinationService {
         }
 
         apply(destination, request);
-        return DestinationResponse.from(destination);
+        return DestinationResponse.from(destinationRepository.saveAndFlush(destination));
     }
 
     @Transactional
