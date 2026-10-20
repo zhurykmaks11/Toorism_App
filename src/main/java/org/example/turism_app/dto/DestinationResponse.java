@@ -3,6 +3,7 @@ package org.example.turism_app.dto;
 import org.example.turism_app.model.Destination;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 public record DestinationResponse(
         Long id,
@@ -10,7 +11,11 @@ public record DestinationResponse(
         String country,
         LocalDate arrivalDate,
         LocalDate departureDate,
-        Long tripId
+        Long tripId,
+        String createdBy,
+        LocalDateTime createdAt,
+        String updatedBy,
+        LocalDateTime updatedAt
 ) {
     public static DestinationResponse from(Destination d) {
         return new DestinationResponse(
@@ -19,7 +24,11 @@ public record DestinationResponse(
                 d.getCountry(),
                 d.getArrivalDate(),
                 d.getDepartureDate(),
-                d.getTrip().getId()
+                d.getTrip().getId(),
+                d.getCreatedBy(),
+                d.getCreatedAt(),
+                d.getUpdatedBy(),
+                d.getUpdatedAt()
         );
     }
 }

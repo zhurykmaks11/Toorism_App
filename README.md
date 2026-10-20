@@ -6,7 +6,73 @@
 |---|---|---|
 | №1 | Simple web-application | `Lab1-web-security` |
 | №2 | Create CRUD http-requests for the project | `lab2-web-security` |
-| **№3** | **Protect by basic authorization all the requests from task № 2** | **`lab3-web-security`** |
+| №3 | Protect by basic authorization all the requests from task № 2 | `lab3-web-security` |
+| **№4** | **CSRF & Audit** | **`lab4-web-security`** |
+
+---
+
+## Що зроблено в лабораторній №4: CSRF & Audit
+
+### CSRF-захист
+
+Запити, що змінюють дані (POST, PUT, PATCH, DELETE), тепер приймаються лише з **CSRF-токеном**:
+
+1. Сервер видає токен у cookie **`XSRF-TOKEN`** у відповідь на будь-який запит. Те саме значення дублюється в заголовку відповіді `X-XSRF-TOKEN`.
+2. Клієнт повертає токен у заголовку запиту **`X-XSRF-TOKEN`** разом із cookie.
+3. Немає токена або він не збігається з cookie: **403 Forbidden**.
+
+```json
+{
+  "status": 403,
+  "error": "Forbidden",
+  "message": "Відсутній або недійсний CSRF-токен: передайте значення cookie XSRF-TOKEN у заголовку X-XSRF-TOKEN",
+  "path": "/api/trips"
+}
+```
+
+Навіщо це потрібно: сторонній сайт може змусити браузер надіслати запит з cookie користувача, але не може прочитати значення токена й підставити його в заголовок.
+
+Реалізація: `SecurityConfig`, `StatelessCookieCsrfTokenRepository` (cookie з токеном) та `CsrfCookieFilter`.
+
+### Аудит
+
+- **Аудит даних (JPA Auditing):** у кожній подорожі, місті й місці зберігається, **хто і коли** запис створив і змінив. Поля заповнюються автоматично логіном з Basic-авторизації:
+
+```json
+{
+  "id": 4,
+  "title": "Київ — довгі вихідні",
+  "status": "ONGOING",
+  "createdBy": "admin",
+  "createdAt": "2026-10-20T20:15:12",
+  "updatedBy": "admin",
+  "updatedAt": "2026-10-20T20:15:40"
+}
+```
+
+- **Журнал запитів:** `AuditLogFilter` записує в консоль кожен запит до API:
+
+```
+AUDIT : user=admin | POST /api/trips | status=201 | 35 ms
+AUDIT : user=user | DELETE /api/trips/4 | status=403 | 3 ms
+AUDIT : user=anonymous | GET /api/trips | status=401 | 2 ms
+```
+
+Реалізація: `Auditable` (базовий клас сутностей), `JpaAuditingConfig`, `AuditLogFilter`, міграція `V3__add_audit_columns.sql`.
+
+### 5 HTTP-запитів (лаба №4)
+
+Файл: **`http-requests/csrf-audit.http`** (IntelliJ IDEA HTTP Client). Запуск: кнопка **▶▶ Run All Requests in File**, *Run with: No Environment*.
+
+| № | Запит | Що робить | Очікується |
+|---|---|---|---|
+| 1 | `GET /api/trips` | показати всі подорожі й отримати CSRF-токен | 200 |
+| 2 | `GET /api/trips/1` | прочитати одну подорож | 200 |
+| 3 | `POST /api/trips` | створити подорож (+ `X-XSRF-TOKEN`) | 201, `createdBy = admin` |
+| 4 | `PUT /api/trips/{tripId}` | оновити подорож (+ `X-XSRF-TOKEN`) | 200, `updatedBy = admin` |
+| 5 | `DELETE /api/trips/{tripId}` | видалити подорож (+ `X-XSRF-TOKEN`) | 204 |
+
+Кожен запит має перевірку (`client.test`), тому після запуску IntelliJ показує **5 tests passed**. Відповіді зберігаються в `.idea/httpRequests/`, cookie з CSRF-токеном у `http-client.cookies`.
 
 ---
 
@@ -258,9 +324,10 @@ trips (подорожі)
       └── places (місця)           destination_id → destinations.id, ON DELETE CASCADE
 ```
 
-- **trips**: id, title, description, start_date, end_date, budget, status, created_at
+- **trips**: id, title, description, start_date, end_date, budget, status
 - **destinations**: id, city, country, arrival_date, departure_date, trip_id
 - **places**: id, name, category, planned_date, cost, visited, rating, destination_id
+- у кожній таблиці (лаба №4): **created_by, created_at, updated_by, updated_at**
 
 ---
 
@@ -269,11 +336,10 @@ trips (подорожі)
 ```
 Turism_APP/
 ├── docker-compose.yml                    # PostgreSQL у Docker
-├── http-requests/basic-auth.http         # 10 HTTP-запитів для IntelliJ IDEA (лаба №3)
-├── postman/                              # колекція Postman (лаба №3)
+├── http-requests/csrf-audit.http         # 5 HTTP-запитів для IntelliJ IDEA (лаба №4)
 └── src/main/
     ├── java/org/example/turism_app/
-    │   ├── config/                       # Spring Security: Basic Auth, користувачі, 401/403
+    │   ├── config/                       # Spring Security: Basic Auth, CSRF, аудит, 401/403
     │   ├── controller/                   # REST-контролери (HTTP → сервіс)
     │   │   ├── TripController.java
     │   │   ├── DestinationController.java
@@ -288,11 +354,12 @@ Turism_APP/
         ├── application.properties
         ├── db/migration/                 # SQL-міграції Flyway
         │   ├── V1__create_tables.sql
-        │   └── V2__insert_sample_data.sql
+        │   ├── V2__insert_sample_data.sql
+        │   └── V3__add_audit_columns.sql      # поля аудиту (лаба №4)
         └── static/index.html             # головна сторінка
 ```
 
-**Як проходить запит:** Spring Security перевіряє логін, пароль і роль → `Controller` приймає HTTP-запит і перевіряє DTO (`@Valid`) → `Service` перевіряє бізнес-правила → `Repository` звертається до PostgreSQL → у відповідь повертається DTO у форматі JSON.
+**Як проходить запит:** журнал аудиту → перевірка CSRF-токена → Spring Security перевіряє логін, пароль і роль → `Controller` приймає HTTP-запит і перевіряє DTO (`@Valid`) → `Service` перевіряє бізнес-правила → `Repository` звертається до PostgreSQL → у відповідь повертається DTO у форматі JSON.
 
 ---
 
@@ -305,5 +372,5 @@ Turism_APP/
 | `database "travel_planner" does not exist` | Створіть базу (крок 1) |
 | `Port 8080 was already in use` | Додайте `server.port=8081` в `application.properties` |
 | `401 Unauthorized` у Postman | Перевірте вкладку *Authorization*: Type = Basic Auth, правильні логін і пароль |
-| `403 Forbidden` на POST / PUT / DELETE | Ці дії дозволені лише `admin` |
+| `403 Forbidden` на POST / PUT / DELETE | Ці дії дозволені лише `admin`; також перевірте заголовок `X-XSRF-TOKEN` (спершу виконайте GET-запит) |
 | `invalid target release: 25` | Встановіть JDK 25 і виберіть його в *File → Project Structure → SDK* |

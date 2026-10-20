@@ -15,7 +15,10 @@ public record TripResponse(
         LocalDate endDate,
         BigDecimal budget,
         TripStatus status,
-        LocalDateTime createdAt
+        String createdBy,
+        LocalDateTime createdAt,
+        String updatedBy,
+        LocalDateTime updatedAt
 ) {
     public static TripResponse from(Trip trip) {
         return new TripResponse(
@@ -26,7 +29,10 @@ public record TripResponse(
                 trip.getEndDate(),
                 trip.getBudget(),
                 trip.getStatus(),
-                trip.getCreatedAt()
+                trip.getCreatedBy(),
+                trip.getCreatedAt(),
+                trip.getUpdatedBy(),
+                trip.getUpdatedAt()
         );
     }
 }

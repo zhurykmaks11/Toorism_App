@@ -1,0 +1,79 @@
+### Лаба 3: 10 HTTP-запитів з Basic Authorization
+### 01. Без авторизації → 401
+GET {{baseUrl}}/api/trips
+
+### 02. Неправильний пароль → 401
+GET {{baseUrl}}/api/trips
+Authorization: Basic {{adminUsername}} wrong-password
+
+### 03. USER: отримати всі подорожі → 200
+GET {{baseUrl}}/api/trips
+Authorization: Basic {{userUsername}} {{userPassword}}
+
+### 04. USER: отримати міста подорожі → 200
+GET {{baseUrl}}/api/trips/1/destinations
+Authorization: Basic {{userUsername}} {{userPassword}}
+
+### 05. USER: створити подорож → 403
+POST {{baseUrl}}/api/trips
+Authorization: Basic {{userUsername}} {{userPassword}}
+Content-Type: application/json
+
+{
+  "title": "Київ — вихідні",
+  "description": "Музеї, лавра і Поділ",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-21",
+  "budget": 6000,
+  "status": "PLANNED"
+}
+
+### 06. ADMIN: створити подорож → 201
+POST {{baseUrl}}/api/trips
+Authorization: Basic {{adminUsername}} {{adminPassword}}
+Content-Type: application/json
+
+{
+  "title": "Київ — вихідні",
+  "description": "Музеї, лавра і Поділ",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-21",
+  "budget": 6000,
+  "status": "PLANNED"
+}
+
+> {% client.global.set("tripId", response.body.id); %}
+
+### 07. ADMIN: оновити подорож → 200
+PUT {{baseUrl}}/api/trips/{{tripId}}
+Authorization: Basic {{adminUsername}} {{adminPassword}}
+Content-Type: application/json
+
+{
+  "title": "Київ — довгі вихідні",
+  "description": "Музеї, лавра, Поділ і Андріївський узвіз",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-22",
+  "budget": 7500,
+  "status": "ONGOING"
+}
+
+### 08. ADMIN: додати місто до подорожі → 201
+POST {{baseUrl}}/api/trips/{{tripId}}/destinations
+Authorization: Basic {{adminUsername}} {{adminPassword}}
+Content-Type: application/json
+
+{
+  "city": "Київ",
+  "country": "Україна",
+  "arrivalDate": "2026-12-18",
+  "departureDate": "2026-12-21"
+}
+
+### 09. USER: видалити подорож → 403
+DELETE {{baseUrl}}/api/trips/{{tripId}}
+Authorization: Basic {{userUsername}} {{userPassword}}
+
+### 10. ADMIN: видалити подорож → 204
+DELETE {{baseUrl}}/api/trips/{{tripId}}
+Authorization: Basic {{adminUsername}} {{adminPassword}}

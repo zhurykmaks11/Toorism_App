@@ -5,17 +5,27 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
+import org.springframework.security.web.csrf.CsrfException;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
+/**
+ * 403 Forbidden:
+ * <ul>
+ *   <li>немає CSRF-токена або він недійсний (лаба №4);</li>
+ *   <li>ролі недостатньо — USER намагається змінити дані (лаба №3).</li>
+ * </ul>
+ */
 @Component
 public class JsonAccessDeniedHandler implements AccessDeniedHandler {
 
     @Override
     public void handle(HttpServletRequest request, HttpServletResponse response,
                        AccessDeniedException accessDeniedException) throws IOException {
-        SecurityErrorWriter.write(request, response, HttpStatus.FORBIDDEN,
-                "Доступ заборонено: ця дія доступна лише ролі ADMIN");
+        String message = (accessDeniedException instanceof CsrfException)
+                ? "Відсутній або недійсний CSRF-токен: передайте значення cookie XSRF-TOKEN у заголовку X-XSRF-TOKEN"
+                : "Доступ заборонено: ця дія доступна лише ролі ADMIN";
+        SecurityErrorWriter.write(request, response, HttpStatus.FORBIDDEN, message);
     }
 }
