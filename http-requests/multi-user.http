@@ -1,0 +1,174 @@
+###1. USER: GET all trips → 200
+GET http://localhost:8080/api/trips
+Authorization: Basic user user123
+Accept: application/json
+
+> {%
+    client.test("1. USER: GET all trips → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+    });
+    // CSRF-токен (лаба №4) для наступних POST / PUT / DELETE
+    client.global.set("xsrfToken", response.headers.valueOf("X-XSRF-TOKEN"));
+%}
+
+###2. USER: GET one trip → 200
+GET http://localhost:8080/api/trips/1
+Authorization: Basic user user123
+Accept: application/json
+
+> {%
+    client.test("2. USER: GET one trip → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+        client.assert(response.body.id === 1, "Очікувалась подорож з id = 1");
+    });
+%}
+
+###3. USER: CREATE trip → 403 (немає прав)
+POST http://localhost:8080/api/trips
+Authorization: Basic user user123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Київ — вихідні",
+  "description": "Музеї, лавра і Поділ",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-21",
+  "budget": 6000,
+  "status": "PLANNED"
+}
+
+> {%
+    client.test("3. USER: CREATE trip → 403 (немає прав)", function () {
+        client.assert(response.status === 403, "Очікувався 403, отримано " + response.status);
+        client.assert(response.body.message.indexOf("не має права") >= 0, "403 має бути через роль, а не через CSRF");
+    });
+%}
+
+###4. ADMIN: CREATE trip → 201
+POST http://localhost:8080/api/trips
+Authorization: Basic admin admin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Київ — вихідні",
+  "description": "Музеї, лавра і Поділ",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-21",
+  "budget": 6000,
+  "status": "PLANNED"
+}
+
+> {%
+    client.test("4. ADMIN: CREATE trip → 201", function () {
+        client.assert(response.status === 201, "Очікувався 201, отримано " + response.status);
+        client.assert(response.body.createdBy === "admin", "createdBy має бути admin");
+    });
+    client.global.set("tripId", response.body.id);
+%}
+
+###5. ADMIN: UPDATE trip → 200
+PUT http://localhost:8080/api/trips/{{tripId}}
+Authorization: Basic admin admin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Київ — довгі вихідні",
+  "description": "Музеї, лавра, Поділ і Андріївський узвіз",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-22",
+  "budget": 7500,
+  "status": "ONGOING"
+}
+
+> {%
+    client.test("5. ADMIN: UPDATE trip → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+        client.assert(response.body.updatedBy === "admin", "updatedBy має бути admin");
+    });
+%}
+
+###6. USER: UPDATE trip → 403 (немає прав)
+PUT http://localhost:8080/api/trips/{{tripId}}
+Authorization: Basic user user123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Київ — довгі вихідні",
+  "description": "Музеї, лавра, Поділ і Андріївський узвіз",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-22",
+  "budget": 7500,
+  "status": "ONGOING"
+}
+
+> {%
+    client.test("6. USER: UPDATE trip → 403 (немає прав)", function () {
+        client.assert(response.status === 403, "Очікувався 403, отримано " + response.status);
+        client.assert(response.body.message.indexOf("не має права") >= 0, "403 має бути через роль, а не через CSRF");
+    });
+%}
+
+###7. ADMIN: DELETE trip → 403 (видаляє лише SUPERADMIN)
+DELETE http://localhost:8080/api/trips/{{tripId}}
+Authorization: Basic admin admin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Accept: application/json
+
+> {%
+    client.test("7. ADMIN: DELETE trip → 403 (видаляє лише SUPERADMIN)", function () {
+        client.assert(response.status === 403, "Очікувався 403, отримано " + response.status);
+        client.assert(response.body.message.indexOf("не має права") >= 0, "403 має бути через роль, а не через CSRF");
+    });
+%}
+
+###8. Без авторизації: GET all trips → 401
+GET http://localhost:8080/api/trips
+Accept: application/json
+
+> {%
+    client.test("8. Без авторизації: GET all trips → 401", function () {
+        client.assert(response.status === 401, "Очікувався 401, отримано " + response.status);
+    });
+%}
+
+###9. SUPERADMIN: DELETE trip → 204
+DELETE http://localhost:8080/api/trips/{{tripId}}
+Authorization: Basic superadmin superadmin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Accept: application/json
+
+> {%
+    client.test("9. SUPERADMIN: DELETE trip → 204", function () {
+        client.assert(response.status === 204, "Очікувався 204, отримано " + response.status);
+    });
+%}
+
+###10. SUPERADMIN: GET deleted trip → 404
+GET http://localhost:8080/api/trips/{{tripId}}
+Authorization: Basic superadmin superadmin123
+Accept: application/json
+
+> {%
+    client.test("10. SUPERADMIN: GET deleted trip → 404", function () {
+        client.assert(response.status === 404, "Очікувався 404, отримано " + response.status);
+    });
+%}
+
+###
+# Лаба №5: Multi-user — 10 запитів відповідно до ролей і обмежень доступу
+# Запуск: ▶▶ "Run All Requests in File" (Run with: No Environment). Запускати весь файл, по черзі.
+#
+# Користувачі:
+#   user       / user123       — USER:       лише GET
+#   admin      / admin123      — ADMIN:      GET, POST, PUT, PATCH
+#   superadmin / superadmin123 — SUPERADMIN: усе, зокрема DELETE
+#
+# Запит №1 отримує CSRF-токен (лаба №4), запит №4 — id нової подорожі для наступних запитів.
