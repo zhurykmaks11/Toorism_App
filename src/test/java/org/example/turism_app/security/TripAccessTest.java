@@ -15,7 +15,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -54,7 +53,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * </table></p>
  *
  * <p>{@code @WebMvcTest} піднімає лише веб-шар: контролер + справжню конфігурацію Spring Security
- * ({@link SecurityConfig}). Сервіс підмінено заглушкою ({@code @MockitoBean}), тому база даних не потрібна —
+ * ({@link SecurityConfig}). Запити надсилаються з Basic-авторизацією справжніх користувачів з лаби №5
+ * (user, admin, superadmin). Сервіс підмінено заглушкою ({@code @MockitoBean}), тому база даних не потрібна —
  * тести перевіряють саме доступ, а не роботу з БД.</p>
  */
 @WebMvcTest(TripController.class)
@@ -116,7 +116,7 @@ class TripAccessTest {
     // ---------------------------------------------------------------- USER
 
     @Test
-    @DisplayName("3. USER (Basic Auth user/user123): GET /api/trips → 200 OK")
+    @DisplayName("3. user: GET /api/trips → 200 OK")
     void userCanReadAllTrips() throws Exception {
         mockMvc.perform(get("/api/trips").with(httpBasic("user", "user123")))
                 .andExpect(status().isOk())
@@ -124,19 +124,17 @@ class TripAccessTest {
     }
 
     @Test
-    @WithMockUser(username = "user", roles = "USER")
-    @DisplayName("4. USER: GET /api/trips/4 → 200 OK")
+    @DisplayName("4. user: GET /api/trips/4 → 200 OK")
     void userCanReadOneTrip() throws Exception {
-        mockMvc.perform(get("/api/trips/4"))
+        mockMvc.perform(get("/api/trips/4").with(httpBasic("user", "user123")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(4));
     }
 
     @Test
-    @WithMockUser(username = "user", roles = "USER")
-    @DisplayName("5. USER: POST /api/trips → 403 Forbidden (немає прав на створення)")
+    @DisplayName("5. user: POST /api/trips → 403 Forbidden (немає прав на створення)")
     void userCannotCreateTrip() throws Exception {
-        mockMvc.perform(post("/api/trips").with(csrf())
+        mockMvc.perform(post("/api/trips").with(httpBasic("user", "user123")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content(TRIP_JSON))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value(containsString("не має права")));
@@ -147,10 +145,9 @@ class TripAccessTest {
     // ---------------------------------------------------------------- ADMIN
 
     @Test
-    @WithMockUser(username = "admin", roles = "ADMIN")
-    @DisplayName("6. ADMIN: POST /api/trips → 201 Created")
+    @DisplayName("6. admin: POST /api/trips → 201 Created")
     void adminCanCreateTrip() throws Exception {
-        mockMvc.perform(post("/api/trips").with(csrf())
+        mockMvc.perform(post("/api/trips").with(httpBasic("admin", "admin123")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content(TRIP_JSON))
                 .andExpect(status().isCreated())
                 .andExpect(header().string("Location", "/api/trips/4"));
@@ -159,10 +156,9 @@ class TripAccessTest {
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = "ADMIN")
-    @DisplayName("7. ADMIN: PUT /api/trips/4 → 200 OK")
+    @DisplayName("7. admin: PUT /api/trips/4 → 200 OK")
     void adminCanUpdateTrip() throws Exception {
-        mockMvc.perform(put("/api/trips/4").with(csrf())
+        mockMvc.perform(put("/api/trips/4").with(httpBasic("admin", "admin123")).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content(TRIP_JSON))
                 .andExpect(status().isOk());
 
@@ -170,10 +166,9 @@ class TripAccessTest {
     }
 
     @Test
-    @WithMockUser(username = "admin", roles = "ADMIN")
-    @DisplayName("8. ADMIN: DELETE /api/trips/4 → 403 Forbidden (видаляє лише SUPERADMIN)")
+    @DisplayName("8. admin: DELETE /api/trips/4 → 403 Forbidden (видаляє лише SUPERADMIN)")
     void adminCannotDeleteTrip() throws Exception {
-        mockMvc.perform(delete("/api/trips/4").with(csrf()))
+        mockMvc.perform(delete("/api/trips/4").with(httpBasic("admin", "admin123")).with(csrf()))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value(containsString("SUPERADMIN")));
 
@@ -183,10 +178,9 @@ class TripAccessTest {
     // ---------------------------------------------------------------- SUPERADMIN
 
     @Test
-    @WithMockUser(username = "superadmin", roles = "SUPERADMIN")
-    @DisplayName("9. SUPERADMIN: DELETE /api/trips/4 → 204 No Content")
+    @DisplayName("9. superadmin: DELETE /api/trips/4 → 204 No Content")
     void superadminCanDeleteTrip() throws Exception {
-        mockMvc.perform(delete("/api/trips/4").with(csrf()))
+        mockMvc.perform(delete("/api/trips/4").with(httpBasic("superadmin", "superadmin123")).with(csrf()))
                 .andExpect(status().isNoContent());
 
         verify(tripService).delete(4L);
@@ -195,10 +189,9 @@ class TripAccessTest {
     // ---------------------------------------------------------------- CSRF (лаба №4)
 
     @Test
-    @WithMockUser(username = "superadmin", roles = "SUPERADMIN")
-    @DisplayName("10. SUPERADMIN без CSRF-токена: POST /api/trips → 403 Forbidden")
+    @DisplayName("10. superadmin без CSRF-токена: POST /api/trips → 403 Forbidden")
     void requestWithoutCsrfTokenIsRejected() throws Exception {
-        mockMvc.perform(post("/api/trips")
+        mockMvc.perform(post("/api/trips").with(httpBasic("superadmin", "superadmin123"))
                         .contentType(MediaType.APPLICATION_JSON).content(TRIP_JSON))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.message").value(containsString("CSRF")));
