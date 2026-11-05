@@ -7,7 +7,53 @@
 | №1 | Simple web-application | `Lab1-web-security` |
 | №2 | Create CRUD http-requests for the project | `lab2-web-security` |
 | №3 | Protect by basic authorization all the requests from task № 2 | `lab3-web-security` |
-| **№4** | **CSRF & Audit** | **`lab4-web-security`** |
+| №4 | CSRF & Audit | `lab4-web-security` |
+| **№5** | **Multi-user** | **`lab5-web-security`** |
+
+---
+
+## Що зроблено в лабораторній №5: Multi-user
+
+Створено **3 користувачі** з різними ролями. Доступ до кожної операції обмежено за роллю (`SecurityConfig`):
+
+| Логін | Пароль | Роль | GET | POST / PUT / PATCH | DELETE |
+|---|---|---|---|---|---|
+| `user` | `user123` | USER | ✅ | ❌ 403 | ❌ 403 |
+| `admin` | `admin123` | ADMIN | ✅ | ✅ | ❌ 403 |
+| `superadmin` | `superadmin123` | SUPERADMIN | ✅ | ✅ | ✅ |
+
+- Без авторизації або з неправильним паролем: **401 Unauthorized**.
+- Роль не має права на дію: **403 Forbidden** з поясненням, якої ролі бракує:
+
+```json
+{
+  "status": 403,
+  "error": "Forbidden",
+  "message": "Доступ заборонено: користувач admin (ADMIN) не має права виконувати DELETE. Потрібна роль SUPERADMIN",
+  "path": "/api/trips/4"
+}
+```
+
+Логіни й паролі задаються в `application.properties` (або змінними `USER_*`, `ADMIN_*`, `SUPERADMIN_*`), паролі зберігаються як BCrypt-хеш.
+
+### 10 HTTP-запитів (лаба №5)
+
+Файл: **`http-requests/multi-user.http`**. Запуск в IntelliJ IDEA: **▶▶ Run All Requests in File**, *Run with: No Environment*.
+
+| № | Користувач | Запит | Очікується | Що перевіряє |
+|---|---|---|---|---|
+| 1 | user | `GET /api/trips` | 200 | USER може читати |
+| 2 | user | `GET /api/trips/1` | 200 | USER може читати |
+| 3 | user | `POST /api/trips` | **403** | USER не може створювати |
+| 4 | admin | `POST /api/trips` | 201 | ADMIN створює |
+| 5 | admin | `PUT /api/trips/{tripId}` | 200 | ADMIN редагує |
+| 6 | user | `PUT /api/trips/{tripId}` | **403** | USER не може редагувати |
+| 7 | admin | `DELETE /api/trips/{tripId}` | **403** | ADMIN не може видаляти |
+| 8 | без авторизації | `GET /api/trips` | **401** | без логіна доступу немає |
+| 9 | superadmin | `DELETE /api/trips/{tripId}` | 204 | SUPERADMIN видаляє |
+| 10 | superadmin | `GET /api/trips/{tripId}` | 404 | подорож справді видалена |
+
+Кожен запит має перевірку (`client.test`), після запуску всі 10 мають бути зелені. POST / PUT / DELETE передають CSRF-токен з лаби №4 (заголовок `X-XSRF-TOKEN`); токен береться з відповіді на запит №1.
 
 ---
 
@@ -336,7 +382,8 @@ trips (подорожі)
 ```
 Turism_APP/
 ├── docker-compose.yml                    # PostgreSQL у Docker
-├── http-requests/csrf-audit.http         # 5 HTTP-запитів для IntelliJ IDEA (лаба №4)
+├── http-requests/multi-user.http         # 10 HTTP-запитів за ролями (лаба №5)
+├── http-requests/csrf-audit.http         # 5 HTTP-запитів (лаба №4)
 └── src/main/
     ├── java/org/example/turism_app/
     │   ├── config/                       # Spring Security: Basic Auth, CSRF, аудит, 401/403
@@ -372,5 +419,6 @@ Turism_APP/
 | `database "travel_planner" does not exist` | Створіть базу (крок 1) |
 | `Port 8080 was already in use` | Додайте `server.port=8081` в `application.properties` |
 | `401 Unauthorized` у Postman | Перевірте вкладку *Authorization*: Type = Basic Auth, правильні логін і пароль |
-| `403 Forbidden` на POST / PUT / DELETE | Ці дії дозволені лише `admin`; також перевірте заголовок `X-XSRF-TOKEN` (спершу виконайте GET-запит) |
+| `403 Forbidden` на POST / PUT / PATCH | Дозволено лише `admin` і `superadmin`; також перевірте заголовок `X-XSRF-TOKEN` (спершу виконайте GET-запит) |
+| `403 Forbidden` на DELETE | Видаляти може лише `superadmin` |
 | `invalid target release: 25` | Встановіть JDK 25 і виберіть його в *File → Project Structure → SDK* |
