@@ -8,7 +8,35 @@
 | №2 | Create CRUD http-requests for the project | `lab2-web-security` |
 | №3 | Protect by basic authorization all the requests from task № 2 | `lab3-web-security` |
 | №4 | CSRF & Audit | `lab4-web-security` |
-| **№5** | **Multi-user** | **`lab5-web-security`** |
+| №5 | Multi-user | `lab5-web-security` |
+| **№7** | **Access testing** | **`lab7-web-security`** |
+
+---
+
+## Що зроблено в лабораторній №7: Access testing
+
+Написано **10 JUnit-тестів доступу**: `src/test/java/org/example/turism_app/security/TripAccessTest.java`.
+
+Тести використовують `@WebMvcTest` + `MockMvc` + **Spring Security Test** і перевіряють справжню конфігурацію безпеки (`SecurityConfig`). Сервіс підмінено заглушкою (`@MockitoBean`), тому **база даних і Docker для тестів не потрібні**.
+
+| № | Хто | Запит | Очікується |
+|---|---|---|---|
+| 1 | без авторизації | `GET /api/trips` | 401 + заголовок `WWW-Authenticate: Basic` |
+| 2 | admin з неправильним паролем | `GET /api/trips` | 401 |
+| 3 | user (`httpBasic`) | `GET /api/trips` | 200 |
+| 4 | USER (`@WithMockUser`) | `GET /api/trips/4` | 200 |
+| 5 | USER | `POST /api/trips` | 403, сервіс не викликається |
+| 6 | ADMIN | `POST /api/trips` | 201 + `Location` |
+| 7 | ADMIN | `PUT /api/trips/4` | 200 |
+| 8 | ADMIN | `DELETE /api/trips/4` | 403, сервіс не викликається |
+| 9 | SUPERADMIN | `DELETE /api/trips/4` | 204 |
+| 10 | SUPERADMIN без CSRF-токена | `POST /api/trips` | 403 (CSRF) |
+
+**Як запустити:**
+- IntelliJ IDEA: відкрити `TripAccessTest` → зелений ▶ біля назви класу → *Run 'TripAccessTest'*;
+- командний рядок: `mvnw.cmd test -Dtest=TripAccessTest` (Windows) або `./mvnw test -Dtest=TripAccessTest`.
+
+Тест `TurismAppApplicationTests` піднімає весь застосунок з базою, тому для `mvnw test` (усі тести) має бути запущений PostgreSQL (`docker compose up -d`).
 
 ---
 
@@ -404,6 +432,8 @@ Turism_APP/
         │   ├── V2__insert_sample_data.sql
         │   └── V3__add_audit_columns.sql      # поля аудиту (лаба №4)
         └── static/index.html             # головна сторінка
+src/test/java/org/example/turism_app/
+└── security/TripAccessTest.java          # 10 JUnit-тестів доступу (лаба №7)
 ```
 
 **Як проходить запит:** журнал аудиту → перевірка CSRF-токена → Spring Security перевіряє логін, пароль і роль → `Controller` приймає HTTP-запит і перевіряє DTO (`@Valid`) → `Service` перевіряє бізнес-правила → `Repository` звертається до PostgreSQL → у відповідь повертається DTO у форматі JSON.
