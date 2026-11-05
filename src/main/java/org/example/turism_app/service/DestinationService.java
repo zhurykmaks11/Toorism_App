@@ -23,7 +23,7 @@ public class DestinationService {
     private final TripService tripService;
 
     public List<DestinationResponse> getByTrip(Long tripId) {
-        tripService.findTrip(tripId); // 404, якщо подорожі немає
+        tripService.findTrip(tripId);
         return destinationRepository.findByTripIdOrderByArrivalDateAsc(tripId)
                 .stream().map(DestinationResponse::from).toList();
     }
