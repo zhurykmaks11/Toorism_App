@@ -9,7 +9,53 @@
 | №3 | Protect by basic authorization all the requests from task № 2 | `lab3-web-security` |
 | №4 | CSRF & Audit | `lab4-web-security` |
 | №5 | Multi-user | `lab5-web-security` |
-| **№7** | **Access testing** | **`lab7-web-security`** |
+| **№6** | **Annotations** | **`lab6-web-security`** |
+| №7 | Access testing | `lab7-web-security` |
+
+---
+
+## Що зроблено в лабораторній №6: Annotations
+
+Маршрути міст (`DestinationController`) і місць (`PlaceController`) захищено **анотаціями на методах**, а не URL-правилами. Анотації вмикає `@EnableMethodSecurity(securedEnabled = true, jsr250Enabled = true)` у `SecurityConfig`. URL-правило для цих маршрутів лише вимагає вхід (`authenticated()`), а ролі перевіряють анотації. Подорожі (`/api/trips`) лишились на URL-правилах з лаб №3–5.
+
+Використано три види анотацій:
+
+| Анотація | Звідки | Приклад |
+|---|---|---|
+| `@PreAuthorize` | Spring Security, вираз SpEL | `@PreAuthorize("hasAnyRole('ADMIN', 'SUPERADMIN')")` |
+| `@Secured` | Spring Security, список ролей з `ROLE_` | `@Secured({"ROLE_ADMIN", "ROLE_SUPERADMIN"})` |
+| `@RolesAllowed` | Jakarta (JSR-250), ролі без префікса | `@RolesAllowed("SUPERADMIN")` |
+
+| Маршрут | Анотація | Хто має доступ |
+|---|---|---|
+| `GET /api/trips/{id}/destinations`, `GET /api/destinations/{id}` | `@PreAuthorize("hasAnyRole('USER','ADMIN','SUPERADMIN')")` | усі три ролі |
+| `POST /api/trips/{id}/destinations`, `PUT /api/destinations/{id}` | `@Secured({"ROLE_ADMIN","ROLE_SUPERADMIN"})` | admin, superadmin |
+| `DELETE /api/destinations/{id}` | `@RolesAllowed("SUPERADMIN")` | superadmin |
+| `GET /api/destinations/{id}/places`, `GET /api/places/{id}` | `@PreAuthorize("isAuthenticated()")` | будь-хто з логіном |
+| `POST .../places`, `PUT /api/places/{id}` | `@PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")` | admin, superadmin |
+| `PATCH /api/places/{id}/visit` | `@PreAuthorize("hasAnyRole('USER','ADMIN','SUPERADMIN')")` | **усі, зокрема user** |
+| `DELETE /api/places/{id}` | `@PreAuthorize("hasRole('SUPERADMIN')")` | superadmin |
+
+Відмінність від URL-правил: `user` може позначити місце відвіданим і поставити оцінку (PATCH), хоча редагувати чи видаляти місця не може. Якщо роль не підходить, метод контролера не викликається, і сервер повертає **403 Forbidden**.
+
+### 10 HTTP-запитів (лаба №6)
+
+Файл: **`http-requests/annotations.http`**. Запуск в IntelliJ IDEA: **▶▶ Run All Requests in File**, *Run with: No Environment*.
+
+| № | Користувач | Запит | Анотація | Очікується |
+|---|---|---|---|---|
+| 1 | user | `GET /api/trips/3/destinations` | `@PreAuthorize` | 200 |
+| 2 | user | `POST /api/trips/3/destinations` | `@Secured` | **403** |
+| 3 | admin | `POST /api/trips/3/destinations` | `@Secured` | 201 |
+| 4 | admin | `PUT /api/destinations/{id}` | `@Secured` | 200 |
+| 5 | admin | `DELETE /api/destinations/{id}` | `@RolesAllowed` | **403** |
+| 6 | admin | `POST /api/destinations/{id}/places` | `@PreAuthorize` | 201 |
+| 7 | user | `PATCH /api/places/{id}/visit` | `@PreAuthorize` | 200 |
+| 8 | user | `DELETE /api/places/{id}` | `@PreAuthorize` | **403** |
+| 9 | superadmin | `DELETE /api/places/{id}` | `@PreAuthorize` | 204 |
+| 10 | superadmin | `DELETE /api/destinations/{id}` | `@RolesAllowed` | 204 |
+
+Кожен запит має перевірку (`client.test`), після запуску всі 10 мають бути зелені.
 
 ---
 
@@ -410,6 +456,7 @@ trips (подорожі)
 ```
 Turism_APP/
 ├── docker-compose.yml                    # PostgreSQL у Docker
+├── http-requests/annotations.http        # 10 HTTP-запитів до маршрутів з анотаціями (лаба №6)
 ├── http-requests/multi-user.http         # 10 HTTP-запитів за ролями (лаба №5)
 ├── http-requests/csrf-audit.http         # 5 HTTP-запитів (лаба №4)
 └── src/main/

@@ -4,6 +4,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -46,6 +47,9 @@ import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
  */
 @Configuration
 @EnableWebSecurity
+// Лаба №6: вмикає анотації безпеки на методах: @PreAuthorize (prePostEnabled за замовчуванням),
+// @Secured (securedEnabled) і @RolesAllowed (jsr250Enabled)
+@EnableMethodSecurity(securedEnabled = true, jsr250Enabled = true)
 public class SecurityConfig {
 
     public static final String ROLE_USER = "USER";
@@ -72,6 +76,10 @@ public class SecurityConfig {
                 // ---------- Авторизація (лаба №3) ----------
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/health").permitAll()
+                        // Лаба №6: міста й місця захищені АНОТАЦІЯМИ в DestinationController і PlaceController.
+                        // Тут лише вимагаємо вхід, а які ролі мають доступ — вирішують анотації на методах.
+                        .requestMatchers("/api/trips/*/destinations", "/api/destinations/**", "/api/places/**").authenticated()
+                        // Подорожі (лаби №3–5) — правила за URL і HTTP-методом
                         // Читання — усі три ролі
                         .requestMatchers(HttpMethod.GET, "/api/**").hasAnyRole(ROLE_USER, ROLE_ADMIN, ROLE_SUPERADMIN)
                         // Створення і редагування — ADMIN і SUPERADMIN

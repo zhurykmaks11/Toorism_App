@@ -1,0 +1,181 @@
+###1. user: GET міста подорожі → 200
+# Захищено: @PreAuthorize("hasAnyRole('USER','ADMIN','SUPERADMIN')")
+GET http://localhost:8080/api/trips/3/destinations
+Authorization: Basic user user123
+Accept: application/json
+
+> {%
+    client.test("1. user: GET міста подорожі → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+    });
+    client.global.set("xsrfToken", response.headers.valueOf("X-XSRF-TOKEN"));
+%}
+
+###2. user: POST місто → 403
+# Захищено: @Secured({"ROLE_ADMIN","ROLE_SUPERADMIN"})
+POST http://localhost:8080/api/trips/3/destinations
+Authorization: Basic user user123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "city": "Білгород-Дністровський",
+  "country": "Україна",
+  "arrivalDate": "2026-11-10",
+  "departureDate": "2026-11-11"
+}
+
+> {%
+    client.test("2. user: POST місто → 403", function () {
+        client.assert(response.status === 403, "Очікувався 403, отримано " + response.status);
+        client.assert(response.body.message.indexOf("не має права") >= 0, "403 має бути через роль, а не через CSRF");
+    });
+%}
+
+###3. admin: POST місто → 201
+# Захищено: @Secured({"ROLE_ADMIN","ROLE_SUPERADMIN"})
+POST http://localhost:8080/api/trips/3/destinations
+Authorization: Basic admin admin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "city": "Білгород-Дністровський",
+  "country": "Україна",
+  "arrivalDate": "2026-11-10",
+  "departureDate": "2026-11-11"
+}
+
+> {%
+    client.test("3. admin: POST місто → 201", function () {
+        client.assert(response.status === 201, "Очікувався 201, отримано " + response.status);
+        client.assert(response.body.createdBy === "admin", "createdBy має бути admin");
+    });
+    client.global.set("destinationId", response.body.id);
+%}
+
+###4. admin: PUT місто → 200
+# Захищено: @Secured({"ROLE_ADMIN","ROLE_SUPERADMIN"})
+PUT http://localhost:8080/api/destinations/{{destinationId}}
+Authorization: Basic admin admin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "city": "Білгород-Дністровський",
+  "country": "Україна",
+  "arrivalDate": "2026-11-09",
+  "departureDate": "2026-11-11"
+}
+
+> {%
+    client.test("4. admin: PUT місто → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+    });
+%}
+
+###5. admin: DELETE місто → 403
+# Захищено: @RolesAllowed("SUPERADMIN")
+DELETE http://localhost:8080/api/destinations/{{destinationId}}
+Authorization: Basic admin admin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Accept: application/json
+
+> {%
+    client.test("5. admin: DELETE місто → 403", function () {
+        client.assert(response.status === 403, "Очікувався 403, отримано " + response.status);
+        client.assert(response.body.message.indexOf("не має права") >= 0, "403 має бути через роль, а не через CSRF");
+    });
+%}
+
+###6. admin: POST місце → 201
+# Захищено: @PreAuthorize("hasAnyRole('ADMIN','SUPERADMIN')")
+POST http://localhost:8080/api/destinations/{{destinationId}}/places
+Authorization: Basic admin admin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "name": "Аккерманська фортеця",
+  "category": "LANDMARK",
+  "plannedDate": "2026-11-10",
+  "cost": 150,
+  "visited": false
+}
+
+> {%
+    client.test("6. admin: POST місце → 201", function () {
+        client.assert(response.status === 201, "Очікувався 201, отримано " + response.status);
+    });
+    client.global.set("placeId", response.body.id);
+%}
+
+###7. user: PATCH місце відвідане → 200
+# Захищено: @PreAuthorize("hasAnyRole('USER','ADMIN','SUPERADMIN')")
+PATCH http://localhost:8080/api/places/{{placeId}}/visit
+Authorization: Basic user user123
+X-XSRF-TOKEN: {{xsrfToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "rating": 5
+}
+
+> {%
+    client.test("7. user: PATCH місце відвідане → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+        client.assert(response.body.visited === true, "visited має бути true");
+        client.assert(response.body.updatedBy === "user", "updatedBy має бути user");
+    });
+%}
+
+###8. user: DELETE місце → 403
+# Захищено: @PreAuthorize("hasRole('SUPERADMIN')")
+DELETE http://localhost:8080/api/places/{{placeId}}
+Authorization: Basic user user123
+X-XSRF-TOKEN: {{xsrfToken}}
+Accept: application/json
+
+> {%
+    client.test("8. user: DELETE місце → 403", function () {
+        client.assert(response.status === 403, "Очікувався 403, отримано " + response.status);
+        client.assert(response.body.message.indexOf("не має права") >= 0, "403 має бути через роль, а не через CSRF");
+    });
+%}
+
+###9. superadmin: DELETE місце → 204
+# Захищено: @PreAuthorize("hasRole('SUPERADMIN')")
+DELETE http://localhost:8080/api/places/{{placeId}}
+Authorization: Basic superadmin superadmin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Accept: application/json
+
+> {%
+    client.test("9. superadmin: DELETE місце → 204", function () {
+        client.assert(response.status === 204, "Очікувався 204, отримано " + response.status);
+    });
+%}
+
+###10. superadmin: DELETE місто → 204
+# Захищено: @RolesAllowed("SUPERADMIN")
+DELETE http://localhost:8080/api/destinations/{{destinationId}}
+Authorization: Basic superadmin superadmin123
+X-XSRF-TOKEN: {{xsrfToken}}
+Accept: application/json
+
+> {%
+    client.test("10. superadmin: DELETE місто → 204", function () {
+        client.assert(response.status === 204, "Очікувався 204, отримано " + response.status);
+    });
+%}
+
+###
+# Лаба №6: Annotations — 10 запитів від різних користувачів до маршрутів, захищених анотаціями
+# Запуск: ▶▶ "Run All Requests in File" (Run with: No Environment), весь файл по черзі.
+# Користувачі: user / user123 (USER), admin / admin123 (ADMIN), superadmin / superadmin123 (SUPERADMIN).
+# Запит №1 отримує CSRF-токен (лаба №4), №3 — id нового міста, №6 — id нового місця.
