@@ -9,8 +9,79 @@
 | №3 | Protect by basic authorization all the requests from task № 2 | `lab3-web-security` |
 | №4 | CSRF & Audit | `lab4-web-security` |
 | №5 | Multi-user | `lab5-web-security` |
-| **№6** | **Annotations** | **`lab6-web-security`** |
+| №6 | Annotations | `lab6-web-security` |
 | №7 | Access testing | `lab7-web-security` |
+| **№8** | **JWT** | **`lab8-web-security`** |
+
+---
+
+## Що зроблено в лабораторній №8: JWT
+
+Додано вхід через **JWT (JSON Web Token)**: клієнт один раз надсилає логін і пароль і отримує підписаний токен. Далі в кожному запиті він передає лише токен у заголовку `Authorization: Bearer <token>`.
+
+### Отримання токена
+
+```http
+POST http://localhost:8080/api/auth/authenticate
+Content-Type: application/json
+
+{ "username": "admin", "password": "admin123" }
+```
+
+Відповідь `200 OK`:
+```json
+{
+  "token": "eyJhbGciOiJIUzM4NCJ9.eyJzdWIiOiJhZG1pbiIsImZ1bGxOYW1lIjoi...",
+  "type": "Bearer",
+  "expiresIn": 86400
+}
+```
+
+Неправильний логін або пароль: **401 Unauthorized**.
+
+### Що всередині токена (видно на jwt.io)
+
+| Частина | Вміст |
+|---|---|
+| Header | `{"alg": "HS384"}` |
+| Payload | `sub` (логін), `fullName`, `authorities` (ролі), `iat` (коли видано), `exp` (коли спливає, через 24 год) |
+| Signature | HMAC-SHA384 секретним ключем сервера (`app.jwt.secret`) |
+
+```json
+{
+  "sub": "admin",
+  "fullName": "Адміністратор",
+  "authorities": ["ADMIN"],
+  "iat": 1795460000,
+  "exp": 1795546400
+}
+```
+
+jwt.io покаже *Invalid Signature*, бо не знає секретного ключа сервера. Header і payload лише закодовані в Base64URL, тому їх може прочитати будь-хто, а підпис гарантує, що їх ніхто не змінив. Отже, паролі в токен не кладуться.
+
+### Використання токена
+
+`JwtAuthenticationFilter` перевіряє підпис і термін дії токена й бере з нього логін і ролі. Усі правила доступу з лаб №3–6 працюють так само, як із Basic Auth. Запитам з JWT **CSRF-токен не потрібен**: браузер не додає заголовок `Authorization: Bearer` автоматично, тому сторонній сайт не може підробити такий запит. Basic Auth теж працює, як раніше.
+
+Реалізація: `security/JwtService.java`, `security/JwtAuthenticationFilter.java`, `controller/AuthController.java`, бібліотека **jjwt 0.12.6**.
+
+### Як перевірити (Postman)
+
+1. *Import* → `postman/Travel-Planner-JWT.postman_collection.json`.
+2. Виконати запит **«1. Отримати JWT (admin)»** і скопіювати `token` з відповіді.
+3. Відкрити **https://jwt.io**, вставити токен у поле *Encoded*. Праворуч з'являться розшифровані header і payload.
+4. Решта запитів колекції використовують токен автоматично:
+
+| № | Запит | Очікується |
+|---|---|---|
+| 1 | `POST /api/auth/authenticate` (admin / admin123) | 200 + токен |
+| 2 | `GET /api/trips` + Bearer | 200 |
+| 3 | `POST /api/trips` + Bearer (без CSRF) | 201, `createdBy = admin` |
+| 4 | `DELETE /api/trips/{id}` + Bearer admin | 403 (видаляє лише SUPERADMIN) |
+| 5 | `POST /api/auth/authenticate` з неправильним паролем | 401 |
+| 6 | `GET /api/trips` з підробленим токеном | 401 |
+
+Те саме є у файлі `http-requests/jwt.http` для IntelliJ IDEA.
 
 ---
 
