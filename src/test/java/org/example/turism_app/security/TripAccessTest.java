@@ -58,7 +58,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * тести перевіряють саме доступ, а не роботу з БД.</p>
  */
 @WebMvcTest(TripController.class)
-@Import({SecurityConfig.class, JsonAuthenticationEntryPoint.class, JsonAccessDeniedHandler.class})
+@Import({SecurityConfig.class, JsonAuthenticationEntryPoint.class, JsonAccessDeniedHandler.class, JwtService.class})
 @DisplayName("Лаба №7: тести доступу до /api/trips")
 class TripAccessTest {
 

@@ -1,0 +1,92 @@
+###1. Отримати JWT (admin) → 200
+POST http://localhost:8080/api/auth/authenticate
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "admin",
+  "password": "admin123"
+}
+
+> {%
+    client.test("1. Отримати JWT (admin) → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+    });
+    client.global.set("jwtToken", response.body.token);
+%}
+
+###2. GET /api/trips з Bearer-токеном → 200
+GET http://localhost:8080/api/trips
+Authorization: Bearer {{jwtToken}}
+Accept: application/json
+
+> {%
+    client.test("2. GET /api/trips з Bearer-токеном → 200", function () {
+        client.assert(response.status === 200, "Очікувався 200, отримано " + response.status);
+    });
+%}
+
+###3. POST /api/trips з Bearer-токеном → 201
+POST http://localhost:8080/api/trips
+Authorization: Bearer {{jwtToken}}
+Content-Type: application/json
+Accept: application/json
+
+{
+  "title": "Київ — вихідні (JWT)",
+  "description": "Створено із JWT-токеном",
+  "startDate": "2026-12-18",
+  "endDate": "2026-12-21",
+  "budget": 6000,
+  "status": "PLANNED"
+}
+
+> {%
+    client.test("3. POST /api/trips з Bearer-токеном → 201", function () {
+        client.assert(response.status === 201, "Очікувався 201, отримано " + response.status);
+        client.assert(response.body.createdBy === "admin", "createdBy має бути admin");
+    });
+    client.global.set("tripId", response.body.id);
+%}
+
+###4. DELETE /api/trips/{id} з токеном admin → 403
+DELETE http://localhost:8080/api/trips/{{tripId}}
+Authorization: Bearer {{jwtToken}}
+Accept: application/json
+
+> {%
+    client.test("4. DELETE /api/trips/{id} з токеном admin → 403", function () {
+        client.assert(response.status === 403, "Очікувався 403, отримано " + response.status);
+    });
+%}
+
+###5. Неправильний пароль → 401
+POST http://localhost:8080/api/auth/authenticate
+Content-Type: application/json
+Accept: application/json
+
+{
+  "username": "admin",
+  "password": "wrong"
+}
+
+> {%
+    client.test("5. Неправильний пароль → 401", function () {
+        client.assert(response.status === 401, "Очікувався 401, отримано " + response.status);
+    });
+%}
+
+###6. Підроблений токен → 401
+GET http://localhost:8080/api/trips
+Authorization: Bearer {{jwtToken}}abc
+Accept: application/json
+
+> {%
+    client.test("6. Підроблений токен → 401", function () {
+        client.assert(response.status === 401, "Очікувався 401, отримано " + response.status);
+    });
+%}
+
+###
+# Лаба №8: JWT. Запит №1 отримує токен, решта передають його в заголовку Authorization: Bearer.
+# CSRF-токен для запитів з JWT не потрібен. Токен з відповіді №1 вставте на https://jwt.io.

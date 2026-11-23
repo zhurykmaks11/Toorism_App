@@ -3,6 +3,8 @@ package org.example.turism_app.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.example.turism_app.security.JwtAuthenticationFilter;
+import org.example.turism_app.security.JwtService;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -59,7 +61,8 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http,
                                                    JsonAuthenticationEntryPoint authenticationEntryPoint,
-                                                   JsonAccessDeniedHandler accessDeniedHandler) throws Exception {
+                                                   JsonAccessDeniedHandler accessDeniedHandler,
+                                                   JwtService jwtService) throws Exception {
         http
                 // ---------- CSRF ----------
                 // Токен зберігається в cookie XSRF-TOKEN (httpOnly=false, щоб клієнт міг його прочитати)
@@ -70,12 +73,19 @@ public class SecurityConfig {
                         .csrfTokenRepository(new StatelessCookieCsrfTokenRepository())
                         .csrfTokenRequestHandler(new CsrfTokenRequestAttributeHandler())
                         .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy())
+                        // Лаба №8: CSRF не потрібен для отримання токена і для запитів з JWT.
+                        // Браузер не додає заголовок "Authorization: Bearer" автоматично,
+                        // тому сторонній сайт не може підробити такий запит.
+                        .ignoringRequestMatchers("/api/auth/**")
+                        .ignoringRequestMatchers(JwtAuthenticationFilter::hasBearerToken)
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
                 // ---------- Авторизація (лаба №3) ----------
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/health").permitAll()
+                        // Лаба №8: отримати JWT може будь-хто (логін і пароль перевіряє AuthController)
+                        .requestMatchers(HttpMethod.POST, "/api/auth/authenticate").permitAll()
                         // Лаба №6: міста й місця захищені АНОТАЦІЯМИ в DestinationController і PlaceController.
                         // Тут лише вимагаємо вхід, а які ролі мають доступ — вирішують анотації на методах.
                         .requestMatchers("/api/trips/*/destinations", "/api/destinations/**", "/api/places/**").authenticated()
@@ -101,7 +111,10 @@ public class SecurityConfig {
                 // Журнал аудиту — обгортає всю перевірку безпеки, тому бачить фінальний код відповіді
                 .addFilterBefore(new AuditLogFilter(), CsrfFilter.class)
                 // Видає cookie XSRF-TOKEN у кожній відповіді (Spring Security 6+ створює токен "ліниво")
-                .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
+                .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
+                // Лаба №8: вхід за заголовком "Authorization: Bearer <JWT>"
+                .addFilterBefore(new JwtAuthenticationFilter(jwtService, authenticationEntryPoint),
+                        BasicAuthenticationFilter.class);
 
         return http.build();
     }
